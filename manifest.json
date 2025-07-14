@@ -4,7 +4,11 @@
     "service_worker": "background.js"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "content_scripts": [
     {
@@ -15,11 +19,6 @@
         "<all_urls>"
       ],
       "all_frames": true,
-      "permissions": [
-        "storage",
-        "cookies",
-        "<all_urls>"
-      ],
       "run_at": "document_start"
     }
   ],
