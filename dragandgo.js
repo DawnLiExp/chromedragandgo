@@ -332,9 +332,9 @@ let dragAndGo = {
     if (e.clientX < this.startX) {
       xDir = -1
     }
-    let yDir = 1
+    let yDir = -1
     if (e.clientY < this.startY) {
-      yDir = -1
+      yDir = 1
     }
     this.startX = -1
     this.startY = -1
