@@ -1,46 +1,35 @@
-function tabAction (tab, dragData) {
-  let newIdx = tab.index
-  if (dragData.xDir > 0) {
-    ++newIdx
+// Copyright (c) Wenzhang Zhu and contributors.
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'open-tab') return false;
+
+  let url;
+  try {
+    url = new URL(message.url);
+  } catch {
+    sendResponse({ ok: false });
+    return false;
   }
-  let fg = (dragData.yDir == 1)
-  // Removed search engine logic. Only open the dragged link directly.
-  let link = dragData.selection.data
-  chrome.tabs.create({url: link, active: fg, index: newIdx})
-}
 
-function initSettings () {
-  chrome.storage.sync.get(["alt_key", "ctrl_key", "restricted_distance", "gesture" ], function (localStorage) {
-    if (localStorage["alt_key"] == undefined) {
-      chrome.storage.sync.set({"alt_key": true})
-    }
-
-    if (localStorage["ctrl_key"] == undefined) {
-      chrome.storage.sync.set({"ctrl_key": true})
-    }
-
-    if (localStorage["restricted_distance"] == undefined) {
-      chrome.storage.sync.set({"restricted_distance": 16})
-    }
-
-    // Disables gesture by default.
-    if (localStorage["gesture"] == undefined) {
-      chrome.storage.sync.set({"gesture": 0})
-    }
-  })
-}
-
-initSettings()
-chrome.runtime.onConnect.addListener(connectionHandler)
-
-function dragAndGoListener (data, port) {
-  if (data.message == "dragAndGo") {
-    tabAction(port.sender.tab, data)
-  } else if (data.message == "closeMe") {
-    chrome.tabs.remove(port.sender.tab.id)
+  if (sender.id !== chrome.runtime.id || !Number.isInteger(sender.tab?.id) ||
+      typeof message.url !== 'string' ||
+      !['http:', 'https:', 'file:'].includes(url.protocol) ||
+      !['before', 'after'].includes(message.side) ||
+      typeof message.active !== 'boolean') {
+    sendResponse({ ok: false });
+    return false;
   }
-}
 
-function connectionHandler (port) {
-  port.onMessage.addListener(dragAndGoListener)
-}
+  // Read the current position: the tab may have moved since the drag started.
+  chrome.tabs.get(sender.tab.id)
+    .then(tab => chrome.tabs.create({
+      url: url.href,
+      windowId: tab.windowId,
+      index: tab.index + (message.side === 'after' ? 1 : 0),
+      active: message.active
+    }))
+    .then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+
+  // Keep the response channel open on Chrome versions without async listeners.
+  return true;
+});
